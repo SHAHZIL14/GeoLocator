@@ -32,9 +32,6 @@ npx serve .
 
 Click **Get Location** and allow location access when prompted.
 
-## ⚠️ Security Note
-
-This is a client-side demo — the API key used for reverse geocoding is visible in the page source, since there's no backend to hide it behind. **Do not reuse this pattern for anything beyond a personal demo.** For production use, route API calls through a backend proxy so the key never reaches the browser.
 
 ## Status
 
