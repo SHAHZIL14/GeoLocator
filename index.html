@@ -1,112 +1,662 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Location</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoLocator</title>
+       <link rel="icon" type="image/svg" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        .container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            width: 100vw;
-            background-color: blanchedalmond;
-        }
+      :root {
+        --ink: #0b1622;
+        --ink-2: #101f30;
+        --ink-3: #16283b;
+        --brass: #c99a4b;
+        --brass-bright: #e0b566;
+        --brass-dim: #7a5f34;
+        --paper: #ede6d6;
+        --paper-dim: #9aa3ac;
+        --contour: #1c3346;
+        --warn: #c1442e;
+        --warn-bg: #2a1712;
+        --ok: #7ea884;
+        --radius: 14px;
+      }
 
-        .main {
-            height: auto;
-            width: auto;
-            border: 2px solid black;
-            /* display: flex;
-            justify-content: center;
-            align-items: center; */
-        }
+      * {
+        box-sizing: border-box;
+      }
 
-        .btn {
-            padding: 10px;
-            margin: 20px;
-            font-size: 15px;
-            border: 2px solid black;
-            border-radius: 10px;
-            text-align: center;
-        }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: var(--ink);
+        color: var(--paper);
+        font-family: "Inter", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
 
-        .btn:hover {
-            background-color: rgb(206, 190, 165);
-            cursor: pointer;
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      /* Topographic contour background */
+      .contours {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      .contours svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .grain {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        opacity: 0.03;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      .card {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        max-width: 460px;
+        background: linear-gradient(180deg, var(--ink-2), var(--ink-3));
+        border: 1px solid rgba(201, 154, 75, 0.18);
+        border-radius: var(--radius);
+        padding: 40px 36px 32px;
+        box-shadow:
+          0 40px 80px -20px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--brass);
+        margin-bottom: 14px;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--brass);
+        box-shadow: 0 0 8px 1px var(--brass);
+      }
+
+      h1 {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        font-size: 30px;
+        line-height: 1.15;
+        margin: 0 0 8px;
+        letter-spacing: -0.01em;
+      }
+
+      .sub {
+        color: var(--paper-dim);
+        font-size: 14.5px;
+        line-height: 1.5;
+        margin: 0 0 30px;
+        max-width: 38ch;
+      }
+
+      /* Compass */
+      .compass-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 8px 0 28px;
+        height: 132px;
+      }
+
+      .compass {
+        width: 132px;
+        height: 132px;
+        position: relative;
+      }
+
+      .compass svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .compass .ring {
+        stroke: var(--brass-dim);
+        stroke-width: 1;
+        fill: none;
+        opacity: 0.6;
+      }
+
+      .compass .ticks {
+        stroke: var(--paper-dim);
+        stroke-width: 1;
+        opacity: 0.45;
+      }
+
+      .compass .needle {
+        transform-origin: 66px 66px;
+        transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      .compass.searching .needle {
+        animation: spin 1.1s linear infinite;
+      }
+
+      .compass.idle .needle {
+        transform: rotate(-35deg);
+      }
+      .compass.found .needle {
+        transform: rotate(0deg);
+      }
+      .compass.error .needle {
+        transform: rotate(35deg);
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
         }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .compass-label {
+        position: absolute;
+        bottom: -26px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--paper-dim);
+        white-space: nowrap;
+      }
+
+      /* Button */
+      button.locate {
+        width: 100%;
+        padding: 15px 20px;
+        background: var(--brass);
+        color: var(--ink);
+        border: none;
+        border-radius: 10px;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        font-size: 15px;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        transition:
+          background 0.18s ease,
+          transform 0.12s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      button.locate:hover:not(:disabled) {
+        background: var(--brass-bright);
+      }
+      button.locate:active:not(:disabled) {
+        transform: scale(0.985);
+      }
+
+      button.locate:focus-visible {
+        outline: 2px solid var(--brass-bright);
+        outline-offset: 3px;
+      }
+
+      button.locate:disabled {
+        opacity: 0.65;
+        cursor: default;
+      }
+
+      button.locate svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Result */
+      .result {
+        margin-top: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        padding-top: 22px;
+        display: none;
+      }
+
+      .result.visible {
+        display: block;
+      }
+
+      .coord-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .coord {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+
+      .coord-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--brass);
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .coord-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        color: var(--paper);
+      }
+
+      .address-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--paper-dim);
+        margin-bottom: 10px;
+      }
+
+      .address-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .address-item {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        background: rgba(0, 0, 0, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 11px 13px;
+      }
+
+      .address-rank {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        color: var(--brass-dim);
+        flex-shrink: 0;
+        padding-top: 1px;
+      }
+
+      .address-body {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .address-text {
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: var(--paper);
+        margin: 0 0 6px;
+      }
+
+      .address-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .address-type {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--brass);
+        background: rgba(201, 154, 75, 0.12);
+        border: 1px solid rgba(201, 154, 75, 0.25);
+        border-radius: 4px;
+        padding: 2px 6px;
+      }
+
+      .address-coords {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+        color: var(--paper-dim);
+      }
+
+      /* Error */
+      .error-box {
+        display: none;
+        margin-top: 22px;
+        background: var(--warn-bg);
+        border: 1px solid rgba(193, 68, 46, 0.35);
+        border-radius: 10px;
+        padding: 14px 16px;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .error-box.visible {
+        display: flex;
+      }
+
+      .error-box svg {
+        flex-shrink: 0;
+        width: 18px;
+        height: 18px;
+        margin-top: 1px;
+        color: var(--warn);
+      }
+
+      .error-title {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        font-size: 13.5px;
+        color: #e8b3a5;
+        margin: 0 0 3px;
+      }
+
+      .error-msg {
+        font-size: 13px;
+        color: var(--paper-dim);
+        line-height: 1.5;
+        margin: 0;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .compass.searching .needle {
+          animation: none;
+        }
+        .compass .needle {
+          transition: none;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .card {
+          padding: 32px 22px 26px;
+          border-radius: 12px;
+        }
+        h1 {
+          font-size: 25px;
+        }
+        .coord-row {
+          flex-direction: column;
+          gap: 8px;
+        }
+      }
     </style>
-</head>
-
-<body>
-    <div class="container">
-        <div class="main">
-            <div class="btn" onclick="GetAddress()">Get Location</div>
-            <div class="FullAddress" style="font-size: 20px; text-align: center;">Full Address:-> <br></div>
-        </div>
+  </head>
+  <body>
+    <div class="contours" aria-hidden="true">
+      <svg viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice">
+        <g fill="none" stroke="#1c3346" stroke-width="1">
+          <path d="M -50,150 Q 200,80 400,160 T 850,140" />
+          <path d="M -50,220 Q 220,140 420,230 T 850,210" />
+          <path d="M -50,290 Q 240,200 440,300 T 850,280" />
+          <path d="M -50,550 Q 200,480 420,560 T 850,540" />
+          <path d="M -50,620 Q 220,540 440,630 T 850,610" />
+          <path d="M -50,690 Q 240,600 460,700 T 850,680" />
+          <circle cx="620" cy="180" r="60" />
+          <circle cx="620" cy="180" r="95" />
+          <circle cx="150" cy="640" r="50" />
+          <circle cx="150" cy="640" r="80" />
+        </g>
+      </svg>
     </div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <main class="card">
+      <div class="eyebrow">Geolocation Utility</div>
+      <h1>Where in the world are you?</h1>
+      <p class="sub">
+        Get your precise coordinates and resolved address, straight from your
+        browser — nothing leaves your device except the request itself.
+      </p>
+
+      <div class="compass-wrap">
+        <div class="compass idle" id="compass">
+          <svg viewBox="0 0 132 132">
+            <circle class="ring" cx="66" cy="66" r="58" />
+            <circle class="ring" cx="66" cy="66" r="44" />
+            <g class="ticks">
+              <line x1="66" y1="8" x2="66" y2="16" />
+              <line x1="66" y1="116" x2="66" y2="124" />
+              <line x1="8" y1="66" x2="16" y2="66" />
+              <line x1="116" y1="66" x2="124" y2="66" />
+            </g>
+            <text
+              x="66"
+              y="20"
+              text-anchor="middle"
+              fill="#c99a4b"
+              font-family="JetBrains Mono, monospace"
+              font-size="9"
+              font-weight="600"
+            >
+              N
+            </text>
+            <g class="needle">
+              <polygon points="66,26 72,66 66,60" fill="#c99a4b" />
+              <polygon points="66,106 60,66 66,72" fill="#5a6a78" />
+            </g>
+            <circle cx="66" cy="66" r="4.5" fill="#ede6d6" />
+          </svg>
+          <div class="compass-label" id="compassLabel">Ready</div>
+        </div>
+      </div>
+
+      <button class="locate" id="locateBtn">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 2v3M12 19v3M22 12h-3M5 12H2"></path>
+        </svg>
+        <span id="btnLabel">Locate me</span>
+      </button>
+
+      <div class="result" id="result">
+        <div class="coord-row">
+          <div class="coord">
+            <span class="coord-label">Latitude</span>
+            <span class="coord-value" id="latVal">—</span>
+          </div>
+          <div class="coord">
+            <span class="coord-label">Longitude</span>
+            <span class="coord-value" id="lonVal">—</span>
+          </div>
+        </div>
+        <div class="address-label">Nearby matches</div>
+        <div class="address-list" id="addressList"></div>
+      </div>
+
+      <div class="error-box" id="errorBox">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <div>
+          <p class="error-title" id="errorTitle">Couldn't get your location</p>
+          <p class="error-msg" id="errorMsg">—</p>
+        </div>
+      </div>
+    </main>
+
     <script>
+      const compass = document.getElementById("compass");
+      const compassLabel = document.getElementById("compassLabel");
+      const btn = document.getElementById("locateBtn");
+      const btnLabel = document.getElementById("btnLabel");
+      const result = document.getElementById("result");
+      const errorBox = document.getElementById("errorBox");
+      const errorTitle = document.getElementById("errorTitle");
+      const errorMsg = document.getElementById("errorMsg");
+      const latVal = document.getElementById("latVal");
+      const lonVal = document.getElementById("lonVal");
+      const addressList = document.getElementById("addressList");
 
-        const GetAddress = () => {
+      function setState(state) {
+        compass.className = "compass " + state;
+        const labels = {
+          idle: "Ready",
+          searching: "Searching…",
+          found: "Located",
+          error: "Signal lost",
+        };
+        compassLabel.textContent = labels[state] || "Ready";
+      }
 
-            let Latitude;
-            let Longitude;
+      function resetPanels() {
+        result.classList.remove("visible");
+        errorBox.classList.remove("visible");
+      }
 
-            let getFullAddress = async (latyy, longyy) => {
-                console.log(latyy, longyy);
-                const ApiUrl = `https://trueway-geocoding.p.rapidapi.com/ReverseGeocode?location=${latyy},${longyy}&language=en`;
-                const options = {
-                    method: 'GET',
-                    headers: {
-                        'X-RapidAPI-Key': '9f574b0ec8mshe6057dee19e9ee7p1d2d3bjsnf5430e6c93c7',
-                        'X-RapidAPI-Host': 'trueway-geocoding.p.rapidapi.com'
-                    }
-                };
-                let fetching = await fetch(ApiUrl, options);
-                let data = await fetching.json();
-                console.log(data);
-                //     const { city, state, postcode, country, county } = data.results[0].components;
-                 document.getElementsByClassName('FullAddress')[0].innerHTML =`Full Address:->`;
-                for (let index = 0; index < data.results.length; index++) {
-                   
-                    document.getElementsByClassName('FullAddress')[0].innerHTML += `<br>${index + 1}: &nbsp;${(data.results[index].address)} <br>`;
-                }
+      function showError(title, msg) {
+        setState("error");
+        errorTitle.textContent = title;
+        errorMsg.textContent = msg;
+        errorBox.classList.add("visible");
+      }
 
-            }
+      async function reverseGeocode(lat, lon) {
+        // No API key here — this calls our own serverless function (/api/geocode.js),
+        // which holds the RapidAPI key server-side via process.env.RAPIDAPI_KEY.
+        const url = `/api/geocode?lat=${lat}&lon=${lon}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(
+            errBody.error || "Reverse geocoding service returned an error.",
+          );
+        }
+        const data = await res.json();
+        if (!data.results || !data.results.length)
+          throw new Error("No address matches found for this location.");
+        return data.results;
+      }
 
-            const GetLocation = () => {
-                if (navigator.geolocation) {
-                    try {
-                        console.log("If try")
-                        navigator.geolocation.getCurrentPosition((position) => {
-                            Latitude = position.coords.latitude;
-                            Longitude = position.coords.longitude;
-                            getFullAddress(Latitude, Longitude);
+      function renderResults(results) {
+        addressList.innerHTML = "";
+        results.forEach((r, i) => {
+          const item = document.createElement("div");
+          item.className = "address-item";
+          item.innerHTML = `
+        <span class="address-rank">${i + 1}</span>
+        <div class="address-body">
+          <p class="address-text">${r.address}</p>
+          <div class="address-meta">
+            <span class="address-type">${(r.type || "location").replace("_", " ")}</span>
+            <span class="address-coords">${r.location.lat.toFixed(5)}°, ${r.location.lng.toFixed(5)}°</span>
+          </div>
+        </div>
+      `;
+          addressList.appendChild(item);
+        });
+      }
 
-                        }, (error) => {
-                             document.getElementsByClassName('FullAddress')[0].innerHTML = `${error.message} <br> Turn on the location and try again.`;
-                        })
-                    } catch (error) {
-                        console.log("if catch")
-                        console.log(error);
-                    }
-                }
-                else{
-                    console.log("else ")
-                    document.getElementsByClassName('FullAddress')[0].innerHTML = 'Geolocation is not supported by this browser.';
-                }
-            }
+      async function locate() {
+        resetPanels();
 
-            GetLocation();
-
+        if (!("geolocation" in navigator)) {
+          showError(
+            "Geolocation not supported",
+            "Your browser does not support the Geolocation API. Try a modern browser like Chrome, Firefox, or Safari.",
+          );
+          return;
         }
 
+        btn.disabled = true;
+        btnLabel.textContent = "Searching…";
+        setState("searching");
 
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+              const results = await reverseGeocode(latitude, longitude);
+              latVal.textContent = latitude.toFixed(5) + "°";
+              lonVal.textContent = longitude.toFixed(5) + "°";
+              renderResults(results);
+              result.classList.add("visible");
+              setState("found");
+            } catch (err) {
+              showError(
+                "Address lookup failed",
+                err.message ||
+                  "Could not resolve your coordinates into an address. Please try again.",
+              );
+            } finally {
+              btn.disabled = false;
+              btnLabel.textContent = "Locate me";
+            }
+          },
+          (err) => {
+            let msg = "Please try again.";
+            if (err.code === err.PERMISSION_DENIED) {
+              msg =
+                "Location access was denied. Enable location permissions for this site in your browser settings and try again.";
+            } else if (err.code === err.POSITION_UNAVAILABLE) {
+              msg =
+                "Your location is currently unavailable. Check your device's location/GPS settings.";
+            } else if (err.code === err.TIMEOUT) {
+              msg =
+                "The request timed out. Try again in an area with a clearer signal.";
+            }
+            showError("Location access failed", msg);
+            btn.disabled = false;
+            btnLabel.textContent = "Locate me";
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        );
+      }
 
-
+      btn.addEventListener("click", locate);
     </script>
-</body>
-
+  </body>
 </html>
